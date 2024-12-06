@@ -2,24 +2,9 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import zipfile
 import os
 import shutil
-from config import logger
+from config import logger, APP_IDS
+from logic.registry import find_steam_game_path
 
-DELETE_TARGETS = {
-    "Lethal Company": {
-        "folder": os.path.join(os.getenv("PROGRAMFILES(X86)"), "Steam", "steamapps", "common", "Lethal Company", "BepInEx"),
-        "files": [
-            os.path.join(os.getenv("PROGRAMFILES(X86)"), "Steam", "steamapps", "common", "Lethal Company", "doorstop_config.ini"),
-            os.path.join(os.getenv("PROGRAMFILES(X86)"), "Steam", "steamapps", "common", "Lethal Company", "winhttp.dll")
-        ]
-    },
-    "Elden Ring": {
-        "folder": os.path.join(os.getenv("PROGRAMFILES(X86)"), "Steam", "steamapps", "common", "Elden Ring", "Backup"),
-        "files": [
-            os.path.join(os.getenv("PROGRAMFILES(X86)"), "Steam", "steamapps", "common", "Elden Ring", "settings.ini"),
-            os.path.join(os.getenv("PROGRAMFILES(X86)"), "Steam", "steamapps", "common", "Elden Ring", "notes.txt")
-        ]
-    }
-}
 
 class PatchExtractor(QObject):
     """Handles patch extraction with progress tracking."""
@@ -47,24 +32,42 @@ class PatchExtractor(QObject):
             raise RuntimeError(f"Error unpacking patch: {e}")
 
 def delete_old_data(game_name):
-    """Deletes old game data based on predefined targets."""
-    if game_name not in DELETE_TARGETS:
+    """Deletes old game data based on the dynamically found game path."""
+    base_path = find_steam_game_path(APP_IDS.get(game_name))
+    if not base_path:
+        logger.error(f"Game path for {game_name} could not be determined.")
+        raise ValueError(f"Game path for {game_name} could not be determined.")
+
+    targets = {
+        "Lethal Company": {
+            "folder": os.path.join(base_path, "BepInEx"),
+            "files": [
+                os.path.join(base_path, "doorstop_config.ini"),
+                os.path.join(base_path, "winhttp.dll"),
+            ],
+        },
+        "Elden Ring": {
+            "folder": os.path.join(base_path, "Backup"),
+            "files": [
+                os.path.join(base_path, "settings.ini"),
+                os.path.join(base_path, "notes.txt"),
+            ],
+        },
+    }
+
+    if game_name not in targets:
         logger.error(f"No delete targets defined for {game_name}.")
         raise ValueError(f"No delete targets defined for {game_name}.")
 
-    targets = DELETE_TARGETS[game_name]
-
-    folder = targets.get("folder")
+    folder = targets[game_name].get("folder")
     if folder and os.path.exists(folder):
         try:
             shutil.rmtree(folder)
             logger.info(f"Deleted folder: {folder}")
         except Exception as e:
             logger.error(f"Error deleting folder {folder}: {e}")
-        else:
-            logger.info(f"Folder {folder} did not exist.")
 
-    for file_path in targets.get("files", []):
+    for file_path in targets[game_name].get("files", []):
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
@@ -73,6 +76,7 @@ def delete_old_data(game_name):
                 logger.error(f"Error deleting file {file_path}: {e}")
         else:
             logger.info(f"File {file_path} did not exist.")
+
 
 def apply_patch(zip_path, target_path):
     if not os.path.exists(zip_path):
@@ -89,3 +93,5 @@ def apply_patch(zip_path, target_path):
     except Exception as e:
         logger.error(f"Error unpacking patch: {e}")
         raise RuntimeError(f"Error unpacking patch: {e}")
+
+

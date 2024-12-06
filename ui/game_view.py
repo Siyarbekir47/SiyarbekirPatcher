@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QFont, QPixmap
 from config import APP_IDS, logger
 from logic.downloader import DownloadThread
-from logic.patcher import PatchExtractor
+from logic.patcher import PatchExtractor, delete_old_data
 from logic.registry import find_steam_game_path
 import requests
 
@@ -96,6 +96,9 @@ class GameView(QWidget):
     def extract_update(self, zip_path, target_path):
         """Extracts the downloaded update with progress tracking."""
         try:
+            # Alte Daten löschen
+            delete_old_data(self.current_game_name)  # Aufruf der Funktion
+
             if not zip_path or not target_path:
                 QMessageBox.critical(self, "Fehler", "Ungültiger Pfad oder Datei.")
                 self.reset_ui()
