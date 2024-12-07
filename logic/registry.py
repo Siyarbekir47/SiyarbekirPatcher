@@ -5,18 +5,6 @@ from config import logger
 
 
 def find_steam_game_path(app_id: str) -> Optional[str]:
-    """
-    Findet den Installationspfad eines Steam-Spiels anhand seiner App-ID.
-
-    Ablauf:
-    1. Ermittelt den Steam-Hauptinstallationspfad über die Windows-Registry.
-    2. Liest die libraryfolders.vdf, um alle Steam-Bibliotheksverzeichnisse zu erhalten.
-    3. Sucht in diesen Verzeichnissen nach dem spezifischen Spieleordner (hier: "Lethal Company").
-
-    :param app_id: Die Steam-App-ID des Spiels.
-    :return: Der absolute Pfad zum Spielverzeichnis, oder None, wenn nichts gefunden wurde.
-    :raises FileNotFoundError: Wenn libraryfolders.vdf nicht gefunden wird.
-    """
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\\Wow6432Node\\Valve\\Steam") as key:
             steam_install_path, _ = winreg.QueryValueEx(key, "InstallPath")
@@ -62,30 +50,6 @@ def find_steam_game_path(app_id: str) -> Optional[str]:
 
 
 def parse_libraryfolders_vdf(content: str) -> Dict[str, str]:
-    """
-    Parst den Inhalt der libraryfolders.vdf, um die Pfade zu allen Steam-Bibliotheken zu extrahieren.
-
-    Die Datei libraryfolders.vdf enthält Einträge in folgender Art:
-    "0"
-    {
-        "path" "C:\\Program Files (x86)\\Steam"
-        "apps"
-        {
-            "12345" "SomeApp"
-        }
-    }
-    "1"
-    {
-        "path" "D:\\SteamLibrary"
-        "apps"
-        {
-            "67890" "AnotherApp"
-        }
-    }
-
-    :param content: Der Textinhalt der libraryfolders.vdf.
-    :return: Ein Dictionary {app_id: library_path}, wobei app_id die App-ID und library_path der Pfad zur Bibliothek ist.
-    """
     libraries = {}
     lines = content.splitlines()
     current_path = None

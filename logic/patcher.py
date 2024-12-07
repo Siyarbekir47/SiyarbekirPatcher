@@ -3,23 +3,12 @@ import zipfile
 import os
 import shutil
 from config import logger, APP_IDS, DELETE_TARGETS
-from logic.registry import find_steam_game_path
-
 
 class PatchExtractor(QObject):
     """Handles patch extraction with progress tracking."""
     progress = pyqtSignal(int)
 
     def extract_patch(self, zip_path: str, target_path: str) -> None:
-        """
-        Entpackt die Patch-Dateien aus dem angegebenen ZIP-Archiv in den Zielpfad.
-        Sendet dabei Fortschritts-Signale.
-
-        :param zip_path: Pfad zur ZIP-Datei, die entpackt werden soll.
-        :param target_path: Verzeichnis, in das entpackt werden soll.
-        :raises FileNotFoundError: Wenn die ZIP-Datei nicht existiert.
-        :raises RuntimeError: Wenn beim Entpacken ein Fehler auftritt.
-        """
         if not os.path.exists(zip_path):
             logger.critical("Patch file not found.")
             raise FileNotFoundError("Patch file not found.")
@@ -43,14 +32,6 @@ class PatchExtractor(QObject):
 
 
 def delete_old_data(game_name: str, base_path: str) -> None:
-    """
-    Löscht alte Spieldaten (Ordner/Dateien), um vor dem Patchen aufzuräumen.
-    Nutzt dabei die Konfiguration aus config.py (DELETE_TARGETS).
-
-    :param game_name: Name des Spiels.
-    :param base_path: Basisverzeichnis des Spiels.
-    :raises ValueError: Wenn der Spielpfad oder die Targets nicht bestimmt werden können.
-    """
     if not base_path:
         logger.error(f"Game path for {game_name} could not be determined.")
         raise ValueError(f"Game path for {game_name} could not be determined.")
@@ -87,14 +68,6 @@ def delete_old_data(game_name: str, base_path: str) -> None:
 
 
 def apply_patch(zip_path: str, target_path: str) -> None:
-    """
-    Entpackt den Patch ohne Fortschrittsanzeige.
-
-    :param zip_path: Pfad zur Patch-Datei (ZIP).
-    :param target_path: Zielverzeichnis für den Patch.
-    :raises FileNotFoundError: Wenn die Patch-Datei oder der Zielpfad nicht gefunden wird.
-    :raises RuntimeError: Wenn beim Entpacken ein Fehler auftritt.
-    """
     if not os.path.exists(zip_path):
         logger.critical("Patch file not found.")
         raise FileNotFoundError("Patch file not found.")

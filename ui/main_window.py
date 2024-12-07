@@ -5,17 +5,7 @@ from config import logger
 
 
 class MainWindow(QMainWindow):
-    """
-    Das Hauptfenster der Anwendung. Es beinhaltet ein seitliches Menü (GameMenu)
-    zur Auswahl von Spielen und eine Ansicht (GameView), in der je nach Auswahl
-    Inhalte angezeigt und Patch-Vorgänge angestoßen werden.
-    """
-
     def __init__(self):
-        """
-        Initialisiert das Hauptfenster, setzt Titel, Mindestgröße und
-        erstellt die Hauptlayout-Elemente.
-        """
         super().__init__()
         self.setWindowTitle("Siyarbekir's Game-Patcher")
         self.setMinimumSize(600, 500)
@@ -38,8 +28,4 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.view)
 
     def connect_signals(self):
-        """
-        Verbindet Signale des GameMenu mit Slots der GameView.
-        Wenn ein Spiel im Menü ausgewählt wird, wird die View entsprechend aktualisiert.
-        """
         self.menu.gameSelected.connect(self.view.update_view)

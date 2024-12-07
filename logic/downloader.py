@@ -3,25 +3,11 @@ import requests
 from config import APP_IDS, logger
 
 class DownloadThread(QThread):
-    """
-    Ein Thread, um eine Datei (in diesem Fall das Patch-Archiv) herunterzuladen.
-
-    Signale:
-        progress(int): Wird emitted, um den aktuellen Fortschritt in % anzuzeigen.
-        finished(str): Wird emitted, wenn der Download erfolgreich abgeschlossen ist. Der Parameter ist der Pfad zur gespeicherten Datei.
-        error(str): Wird emitted, wenn ein Fehler auftritt. Der Parameter ist die Fehlermeldung.
-    """
     progress = pyqtSignal(int)
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
     def __init__(self, game_name: str, save_path: str):
-        """
-        Initialisiert den Download-Thread.
-
-        :param game_name: Name des Spiels, das heruntergeladen wird (zur URL-Bestimmung).
-        :param save_path: Der lokale Pfad, unter dem die Datei gespeichert werden soll.
-        """
         super().__init__()
         self.game_name = game_name
         self.save_path = save_path
@@ -60,8 +46,6 @@ class DownloadThread(QThread):
                         progress = int((downloaded_size / total_size) * 100)
                         self.progress.emit(progress)
                     else:
-                        # Wenn keine Gesamtgröße vorhanden ist, könnte man 0% oder einen Indikator für "unbekannt" senden.
-                        # Hier senden wir einfach 0%.
                         self.progress.emit(0)
 
             logger.info(f"Download erfolgreich abgeschlossen: {self.save_path}")

@@ -3,12 +3,6 @@ from PyQt5.QtWidgets import QListWidget
 from config import APP_IDS
 
 class GameMenu(QListWidget):
-    """
-    Eine einfache Spiele-Auswahl-Liste. Wenn auf ein Spiel geklickt wird,
-    sendet die Klasse ein Signal mit dem Namen des ausgewählten Spiels.
-    """
-
-    # Signal, das ausgelöst wird, wenn ein Spiel ausgewählt wurde
     gameSelected = pyqtSignal(str)
 
     def __init__(self):
@@ -24,8 +18,4 @@ class GameMenu(QListWidget):
         self.itemClicked.connect(self.on_item_clicked)
 
     def on_item_clicked(self, item):
-        """
-        Wird aufgerufen, wenn auf einen Eintrag in der Liste geklickt wird.
-        Emitter das `gameSelected`-Signal mit dem Namen des Spiels.
-        """
         self.gameSelected.emit(item.text())
