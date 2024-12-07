@@ -31,9 +31,8 @@ class PatchExtractor(QObject):
             logger.error(f"Error unpacking patch: {e}")
             raise RuntimeError(f"Error unpacking patch: {e}")
 
-def delete_old_data(game_name):
+def delete_old_data(game_name, base_path):
     """Deletes old game data based on the dynamically found game path."""
-    base_path = find_steam_game_path(APP_IDS.get(game_name))
     if not base_path:
         logger.error(f"Game path for {game_name} could not be determined.")
         raise ValueError(f"Game path for {game_name} could not be determined.")

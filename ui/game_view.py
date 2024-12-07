@@ -1,3 +1,4 @@
+import os
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
@@ -55,30 +56,43 @@ class GameView(QWidget):
         self.patch_button.clicked.connect(self.start_patch_process)
 
     def start_patch_process(self):
-        if self.is_processing:  # Verhindert mehrfachen Start
+        """Handles the entire patching process."""
+        if self.is_processing:  # Prevents multiple starts
             return
         self.is_processing = True
-        self.patch_button.hide()  # Versteckt den Button
-        """Handles the entire patching process."""
+        self.patch_button.hide()  # Hides the button
+
         if not self.current_game_name:
             QMessageBox.warning(self, "Fehler", "Kein Spiel ausgewählt.")
+            self.reset_ui()
             return
 
         # Step 1: Automatically find game path
         app_id = APP_IDS.get(self.current_game_name)
         if not app_id:
             QMessageBox.warning(self, "Fehler", "Keine App-ID für das Spiel gefunden.")
+            self.reset_ui()
             return
 
         game_path = find_steam_game_path(app_id)
-        if not game_path:
-            # Prompt for manual path selection
+        if not game_path:  # Manually select path if not found
             game_path = QFileDialog.getExistingDirectory(self, "Zielverzeichnis auswählen")
             if not game_path:
                 QMessageBox.warning(self, "Fehler", "Kein Zielverzeichnis ausgewählt.")
+                self.reset_ui()
                 return
+            else:
+                game_path = os.path.normpath(game_path)  # Normalize the path
+                logger.info(f"Manually selected path normalized: {game_path}")
 
-        # Step 2: Start download process
+        # Step 2: Validate the path
+        if not os.path.exists(game_path):
+            QMessageBox.critical(self, "Fehler", "Spielpfad konnte nicht gefunden werden.")
+            logger.error(f"Game path does not exist: {game_path}")
+            self.reset_ui()
+            return
+
+        # Step 3: Start download process
         save_path = f"{app_id}.zip"
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
@@ -88,19 +102,19 @@ class GameView(QWidget):
         self.download_thread.error.connect(self.on_download_error)
         self.download_thread.start()
 
-    def on_download_error(self, error_message):
-        """Handles download errors."""
-        QMessageBox.critical(self, "Download fehlgeschlagen", error_message)
-        self.progress_bar.setVisible(False)
-
     def extract_update(self, zip_path, target_path):
         """Extracts the downloaded update with progress tracking."""
         try:
-            # Alte Daten löschen
-            delete_old_data(self.current_game_name)  # Aufruf der Funktion
+            if not os.path.exists(target_path):
+                logger.info(f"Target path does not exist, creating: {target_path}")
+                os.makedirs(target_path)
 
-            if not zip_path or not target_path:
-                QMessageBox.critical(self, "Fehler", "Ungültiger Pfad oder Datei.")
+            # Delete old data
+            delete_old_data(self.current_game_name,target_path)
+
+            # Validate the ZIP path
+            if not os.path.exists(zip_path):
+                QMessageBox.critical(self, "Fehler", "Update-Datei nicht gefunden.")
                 self.reset_ui()
                 return
 
@@ -118,6 +132,13 @@ class GameView(QWidget):
             QMessageBox.critical(self, "Fehler beim Patchen", str(e))
         finally:
             self.reset_ui()
+
+    def on_download_error(self, error_message):
+        """Handles download errors."""
+        QMessageBox.critical(self, "Download fehlgeschlagen", error_message)
+        self.progress_bar.setVisible(False)
+
+
 
     def update_view(self, game_name):
         """Updates the view for the selected game."""
