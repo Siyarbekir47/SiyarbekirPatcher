@@ -1,32 +1,33 @@
 import os
-
+import requests
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QVBoxLayout, QPushButton, QLabel, QWidget, QMessageBox,
-    QApplication, QStyle, QProgressBar, QFileDialog
+    QProgressBar, QFileDialog
 )
 from PyQt5.QtGui import QFont, QPixmap
 from config import APP_IDS, logger
 from logic.downloader import DownloadThread
 from logic.patcher import PatchExtractor, delete_old_data
 from logic.registry import find_steam_game_path
-import requests
-
 
 class GameView(QWidget):
-    """Simplified GameView with a single Patch button."""
+    """
+    Ein einfaches View-Widget, um ein Spiel auszuwählen, ein Patch herunterzuladen
+    und anzuwenden. Zeigt ein Bild, einen Patch-Button und einen Fortschrittsbalken.
+    """
 
     def __init__(self):
         super().__init__()
         self.current_game_name = None
         self.is_processing = False
-        self.setup_ui()
+        self._setup_ui()
 
-    def setup_ui(self):
-        """Initializes the simplified UI."""
+    def _setup_ui(self):
+        """Initialisiert die UI-Elemente."""
         self.layout = QVBoxLayout(self)
 
-        # Title Label
+        # Titel-Label
         self.title_label = QLabel("Siyarbekir's Game-Patcher")
         font = QFont()
         font.setPointSize(18)
@@ -35,93 +36,122 @@ class GameView(QWidget):
         self.title_label.setAlignment(Qt.AlignCenter)
         self.layout.addWidget(self.title_label)
 
-        # Image Label
+        # Bild-Label
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setMinimumSize(505, 300)
         self.layout.addWidget(self.image_label)
 
-        # Progress Bar
+        # Fortschrittsbalken
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         self.layout.addWidget(self.progress_bar)
 
-        # Patch Button
+        # Patch-Button
         self.patch_button = QPushButton("Patch")
         self.patch_button.setStyleSheet("background-color: green; color: white; font-size: 14pt;")
         self.layout.addWidget(self.patch_button)
         self.patch_button.hide()
 
-        # Connect Patch Button
+        # Signalverbindungen
         self.patch_button.clicked.connect(self.start_patch_process)
 
     def start_patch_process(self):
-        """Handles the entire patching process."""
-        if self.is_processing:  # Prevents multiple starts
+        """
+        Startet den Patch-Prozess:
+        1. App-ID für aktuelles Spiel ermitteln.
+        2. Spielpfad suchen oder manuell auswählen lassen.
+        3. Pfad validieren.
+        4. Download des Patch-Archivs starten.
+        """
+        if self.is_processing:
             return
         self.is_processing = True
-        self.patch_button.hide()  # Hides the button
+        self.patch_button.hide()
 
         if not self.current_game_name:
             QMessageBox.warning(self, "Fehler", "Kein Spiel ausgewählt.")
             self.reset_ui()
             return
 
-        # Step 1: Automatically find game path
+        # App-ID ermitteln
         app_id = APP_IDS.get(self.current_game_name)
         if not app_id:
             QMessageBox.warning(self, "Fehler", "Keine App-ID für das Spiel gefunden.")
             self.reset_ui()
             return
 
-        game_path = find_steam_game_path(app_id)
-        if not game_path:  # Manually select path if not found
-            game_path = QFileDialog.getExistingDirectory(self, "Zielverzeichnis auswählen")
-            if not game_path:
-                QMessageBox.warning(self, "Fehler", "Kein Zielverzeichnis ausgewählt.")
-                self.reset_ui()
-                return
-            else:
-                game_path = os.path.normpath(game_path)  # Normalize the path
-                logger.info(f"Manually selected path normalized: {game_path}")
+        # Spielpfad ermitteln (automatisch oder manuell)
+        game_path = self._get_game_path(app_id)
+        if not game_path:
+            # Fehler wurde schon in _get_game_path() behandelt
+            self.reset_ui()
+            return
 
-        # Step 2: Validate the path
+        # Pfad validieren
         if not os.path.exists(game_path):
             QMessageBox.critical(self, "Fehler", "Spielpfad konnte nicht gefunden werden.")
             logger.error(f"Game path does not exist: {game_path}")
             self.reset_ui()
             return
 
-        # Step 3: Start download process
+        # Download starten
         save_path = f"{app_id}.zip"
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
+
         self.download_thread = DownloadThread(self.current_game_name, save_path)
         self.download_thread.progress.connect(self.progress_bar.setValue)
         self.download_thread.finished.connect(lambda: self.extract_update(save_path, game_path))
         self.download_thread.error.connect(self.on_download_error)
         self.download_thread.start()
 
-    def extract_update(self, zip_path, target_path):
-        """Extracts the downloaded update with progress tracking."""
+    def _get_game_path(self, app_id: str) -> str:
+        """
+        Versucht den Spielpfad automatisch via find_steam_game_path zu ermitteln.
+        Falls dies fehlschlägt, wird ein Dialog zur manuellen Auswahl angezeigt.
+
+        :param app_id: Die App-ID des Spiels.
+        :return: Der ermittelte Spielpfad oder None, falls abgebrochen wurde.
+        """
+        game_path = find_steam_game_path(app_id)
+        if not game_path:
+            # Manuelle Auswahl
+            game_path = QFileDialog.getExistingDirectory(self, "Zielverzeichnis auswählen")
+            if not game_path:
+                QMessageBox.warning(self, "Fehler", "Kein Zielverzeichnis ausgewählt.")
+                return None
+            else:
+                game_path = os.path.normpath(game_path)
+                logger.info(f"Manually selected path normalized: {game_path}")
+        return game_path
+
+    def extract_update(self, zip_path: str, target_path: str):
+        """
+        Extrahiert das heruntergeladene Patch-Archiv in den Zielpfad und löscht
+        zuvor alte Daten.
+
+        :param zip_path: Pfad zum heruntergeladenen ZIP-Archiv.
+        :param target_path: Spielverzeichnis, in das gepatcht werden soll.
+        """
         try:
+            # Falls der Zielpfad aus irgendeinem Grund nicht existiert
             if not os.path.exists(target_path):
                 logger.info(f"Target path does not exist, creating: {target_path}")
                 os.makedirs(target_path)
 
-            # Delete old data
-            delete_old_data(self.current_game_name,target_path)
+            # Alte Daten löschen (Konfigurationen dazu in patcher.py bzw. config.py auslagern)
+            delete_old_data(self.current_game_name, target_path)
 
-            # Validate the ZIP path
+            # ZIP-Pfad validieren
             if not os.path.exists(zip_path):
                 QMessageBox.critical(self, "Fehler", "Update-Datei nicht gefunden.")
                 self.reset_ui()
                 return
 
+            # Patch-Extraktion
             self.progress_bar.setValue(0)
             self.progress_bar.setVisible(True)
-
-            # Patch extraction with progress
             self.patch_extractor = PatchExtractor()
             self.patch_extractor.progress.connect(self.progress_bar.setValue)
             self.patch_extractor.extract_patch(zip_path, target_path)
@@ -133,23 +163,29 @@ class GameView(QWidget):
         finally:
             self.reset_ui()
 
-    def on_download_error(self, error_message):
-        """Handles download errors."""
+    def on_download_error(self, error_message: str):
+        """Behandelt Downloadfehler, zeigt eine Fehlermeldung an und versteckt den Fortschrittsbalken."""
         QMessageBox.critical(self, "Download fehlgeschlagen", error_message)
         self.progress_bar.setVisible(False)
+        self.reset_ui()
 
-
-
-    def update_view(self, game_name):
-        """Updates the view for the selected game."""
+    def update_view(self, game_name: str):
+        """
+        Aktualisiert die UI für das angegebene Spiel:
+        - Setzt den Titel entsprechend
+        - Lädt das Spielbild
+        - Zeigt den Patch-Button
+        """
         logger.info(f"Updating view for {game_name}.")
         self.current_game_name = game_name
         self.title_label.setText(f"{game_name} - Patcher")
-        self.load_game_image(game_name)
+        self._load_game_image(game_name)
         self.patch_button.show()
 
-    def load_game_image(self, game_name):
-        """Loads and displays the game image based on the game name."""
+    def _load_game_image(self, game_name: str):
+        """
+        Lädt und zeigt das Spielbild basierend auf dem Spielnamen.
+        """
         if game_name not in APP_IDS:
             logger.warning(f"No image available for {game_name}.")
             self.image_label.clear()
@@ -174,7 +210,10 @@ class GameView(QWidget):
             self.image_label.setText(f"Fehler beim Laden des Bildes: {e}")
 
     def reset_ui(self):
-        """Resets the UI after the patching process."""
+        """
+        Setzt den UI-Zustand nach dem Patch-Vorgang oder Fehlern zurück.
+        Zeigt den Patch-Button wieder an und versteckt die Progress-Bar.
+        """
         self.progress_bar.setVisible(False)
         self.patch_button.show()
         self.is_processing = False

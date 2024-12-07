@@ -2,7 +2,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import zipfile
 import os
 import shutil
-from config import logger, APP_IDS
+from config import logger, APP_IDS, DELETE_TARGETS
 from logic.registry import find_steam_game_path
 
 
@@ -10,7 +10,16 @@ class PatchExtractor(QObject):
     """Handles patch extraction with progress tracking."""
     progress = pyqtSignal(int)
 
-    def extract_patch(self, zip_path, target_path):
+    def extract_patch(self, zip_path: str, target_path: str) -> None:
+        """
+        Entpackt die Patch-Dateien aus dem angegebenen ZIP-Archiv in den Zielpfad.
+        Sendet dabei Fortschritts-Signale.
+
+        :param zip_path: Pfad zur ZIP-Datei, die entpackt werden soll.
+        :param target_path: Verzeichnis, in das entpackt werden soll.
+        :raises FileNotFoundError: Wenn die ZIP-Datei nicht existiert.
+        :raises RuntimeError: Wenn beim Entpacken ein Fehler auftritt.
+        """
         if not os.path.exists(zip_path):
             logger.critical("Patch file not found.")
             raise FileNotFoundError("Patch file not found.")
@@ -21,8 +30,9 @@ class PatchExtractor(QObject):
 
         try:
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                total_files = len(zip_ref.namelist())
-                for index, file in enumerate(zip_ref.namelist(), start=1):
+                files = zip_ref.namelist()
+                total_files = len(files)
+                for index, file in enumerate(files, start=1):
                     zip_ref.extract(file, target_path)
                     progress = int((index / total_files) * 100)
                     self.progress.emit(progress)
@@ -31,42 +41,41 @@ class PatchExtractor(QObject):
             logger.error(f"Error unpacking patch: {e}")
             raise RuntimeError(f"Error unpacking patch: {e}")
 
-def delete_old_data(game_name, base_path):
-    """Deletes old game data based on the dynamically found game path."""
+
+def delete_old_data(game_name: str, base_path: str) -> None:
+    """
+    Löscht alte Spieldaten (Ordner/Dateien), um vor dem Patchen aufzuräumen.
+    Nutzt dabei die Konfiguration aus config.py (DELETE_TARGETS).
+
+    :param game_name: Name des Spiels.
+    :param base_path: Basisverzeichnis des Spiels.
+    :raises ValueError: Wenn der Spielpfad oder die Targets nicht bestimmt werden können.
+    """
     if not base_path:
         logger.error(f"Game path for {game_name} could not be determined.")
         raise ValueError(f"Game path for {game_name} could not be determined.")
 
-    targets = {
-        "Lethal Company": {
-            "folder": os.path.join(base_path, "BepInEx"),
-            "files": [
-                os.path.join(base_path, "doorstop_config.ini"),
-                os.path.join(base_path, "winhttp.dll"),
-            ],
-        },
-        "Elden Ring": {
-            "folder": os.path.join(base_path, "Backup"),
-            "files": [
-                os.path.join(base_path, "settings.ini"),
-                os.path.join(base_path, "notes.txt"),
-            ],
-        },
-    }
-
-    if game_name not in targets:
+    if game_name not in DELETE_TARGETS:
         logger.error(f"No delete targets defined for {game_name}.")
         raise ValueError(f"No delete targets defined for {game_name}.")
 
-    folder = targets[game_name].get("folder")
-    if folder and os.path.exists(folder):
-        try:
-            shutil.rmtree(folder)
-            logger.info(f"Deleted folder: {folder}")
-        except Exception as e:
-            logger.error(f"Error deleting folder {folder}: {e}")
+    game_targets = DELETE_TARGETS[game_name]
+    folder_name = game_targets.get("folder")
+    files = game_targets.get("files", [])
 
-    for file_path in targets[game_name].get("files", []):
+    # Ordner löschen
+    if folder_name:
+        folder_path = os.path.join(base_path, folder_name)
+        if os.path.exists(folder_path):
+            try:
+                shutil.rmtree(folder_path)
+                logger.info(f"Deleted folder: {folder_path}")
+            except Exception as e:
+                logger.error(f"Error deleting folder {folder_path}: {e}")
+
+    # Dateien löschen
+    for relative_file_path in files:
+        file_path = os.path.join(base_path, relative_file_path)
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
@@ -77,7 +86,15 @@ def delete_old_data(game_name, base_path):
             logger.info(f"File {file_path} did not exist.")
 
 
-def apply_patch(zip_path, target_path):
+def apply_patch(zip_path: str, target_path: str) -> None:
+    """
+    Entpackt den Patch ohne Fortschrittsanzeige.
+
+    :param zip_path: Pfad zur Patch-Datei (ZIP).
+    :param target_path: Zielverzeichnis für den Patch.
+    :raises FileNotFoundError: Wenn die Patch-Datei oder der Zielpfad nicht gefunden wird.
+    :raises RuntimeError: Wenn beim Entpacken ein Fehler auftritt.
+    """
     if not os.path.exists(zip_path):
         logger.critical("Patch file not found.")
         raise FileNotFoundError("Patch file not found.")
@@ -92,5 +109,3 @@ def apply_patch(zip_path, target_path):
     except Exception as e:
         logger.error(f"Error unpacking patch: {e}")
         raise RuntimeError(f"Error unpacking patch: {e}")
-
-
