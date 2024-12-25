@@ -3,6 +3,12 @@
 
 # Ignore the entire .venv folder
 .venv/
+#ignore the entire build
+main.build/
+main.dist/
+main.exe
+siyarbekirspatcher.exe
+siyarspatcher.exe
 
 # Python cache and compiled files
 __pycache__/

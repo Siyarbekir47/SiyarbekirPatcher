@@ -11,6 +11,7 @@ if __name__ == "__main__":
     logger.info("Anwendung wird gestartet...")
     app = QApplication(sys.argv)
 
+    # Update-Check (optional)
     check_and_prompt_update(VERSION_URL)
 
     window = MainWindow()
