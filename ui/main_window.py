@@ -40,9 +40,6 @@ class MainWindow(QMainWindow):
 
         logger.info("MainWindow mit neuer Designer-UI initialisiert.")
 
-    # ------------------------------------------------------------------------------
-    # 1) "GameMenu"-Funktionen ersetzt durch direktes Auslesen des QListWidget
-    # ------------------------------------------------------------------------------
 
     def on_game_selected(self, item):
         """
@@ -52,9 +49,6 @@ class MainWindow(QMainWindow):
         logger.info(f"Game selected: {game_name}")
         self.update_view(game_name)
 
-    # ------------------------------------------------------------------------------
-    # 2) "GameView"-Funktionen direkt in MainWindow integriert
-    # ------------------------------------------------------------------------------
 
     def update_view(self, game_name: str):
         """

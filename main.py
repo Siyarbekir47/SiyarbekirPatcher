@@ -1,4 +1,3 @@
-# main.py
 import sys
 from PyQt5.QtWidgets import QApplication
 from ui.main_window import MainWindow
@@ -12,7 +11,6 @@ if __name__ == "__main__":
     logger.info("Anwendung wird gestartet...")
     app = QApplication(sys.argv)
 
-    # Update-Check (optional)
     check_and_prompt_update(VERSION_URL)
 
     window = MainWindow()
