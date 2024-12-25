@@ -1,5 +1,5 @@
 import logging
-CURRENT_VERSION = "1.6.0"
+CURRENT_VERSION = "1.6.1"
 VERSION_URL = "https://siyarbekir.de/downloads/patcherversion.json"
 # App-IDs für verschiedene Spiele
 APP_IDS = {
