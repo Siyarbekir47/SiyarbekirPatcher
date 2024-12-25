@@ -33,8 +33,8 @@ Siyarbekir's Game Patcher ist ein benutzerfreundliches Tool, das es ermöglicht,
 
 1. **Repository klonen:**
    ```bash
-   git clone https://github.com/yourusername/your-repo-name.git
-   cd your-repo-name
+   git clone https://github.com/Siyarbekir47/SiyarbekirPatcher.git
+   cd SiyarbekirPatcher
 2. **Virtuelle Umgebung erstellen:**
    ```bash
    python -m venv .venv
