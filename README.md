@@ -6,7 +6,7 @@ Siyarbekir's Game Patcher ist ein benutzerfreundliches Tool, das es ermöglicht,
 
 ## 🖼️ Vorschau
 
-![App Screenshot](https://prnt.sc/67BJ42sW39-N) 
+![App Screenshot](https://raw.githubusercontent.com/Siyarbekir47/SiyarbekirPatcher/refs/heads/main/vorschau.png) 
 
 ---
 
