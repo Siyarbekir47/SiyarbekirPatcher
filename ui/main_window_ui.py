@@ -64,6 +64,7 @@ class Ui_main_window(object):
         sizePolicy.setHeightForWidth(self.image_label.sizePolicy().hasHeightForWidth())
         self.image_label.setSizePolicy(sizePolicy)
         self.image_label.setText("")
+        self.image_label.setScaledContents(True)
         self.image_label.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignTop)
         self.image_label.setObjectName("image_label")
         self.game_view.addWidget(self.image_label)
